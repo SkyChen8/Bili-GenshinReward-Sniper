@@ -28,7 +28,20 @@
 3. 运行程序：`python bili_gui_sniper.py`
 
 ### 📖 如何获取核心参数 (TODO)
-> *（提示：此处未来可补充如何通过浏览器 F12 抓包获取 SESSDATA 和 bili_jct 的图文教程）*
+介绍：
+SESSDATA： B站账号登录后的核心 Cookie 凭证之一，用于验证你的用户身份权限。
+
+bili_jct： B站账号的 CSRF 防御验证 Token，所有发送 POST 请求（如抢奖品、点赞等）时必须携带的校验参数。
+
+任务 ID (Task ID)： 对应具体某个奖励活动的唯一编号（例如不同原石数量的看播或直播任务），决定了后台去扣减哪一个奖池的库存。
+
+SESSDATA 获取方法：在电脑浏览器登录 B站，按 F12 打开开发者工具，依次切换到 Application（或 存储 / Storage）面板，展开左侧的 Cookies 并点击 [https://www.bilibili.com](https://www.bilibili.com)，在右侧列表中找到名为 SESSDATA 的条目，复制其对应的值即可。
+
+bili_jct 获取方法：在同上浏览器开发者工具的 Cookies 列表页面中，找到名为 bili_jct 的条目，复制其对应的 Token 字符串即可。
+
+任务 ID (Task ID) 获取方法：进入 B站的活动奖励兑换页面，查看当前浏览器的网址链接。链接中 task_id= 等号后面的那串字符（例如 18ERA2wloghvi2800）就是任务 ID。
+
+
 
 ---
 
