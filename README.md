@@ -41,7 +41,16 @@ bili_jct 获取方法：在同上浏览器开发者工具的 Cookies 列表页�
 
 任务 ID (Task ID) 获取方法：进入 B站的活动奖励兑换页面，查看当前浏览器的网址链接。链接中 task_id= 等号后面的那串字符（例如 18ERA2wloghvi2800）就是任务 ID。
 
+## 🚀 V2.0 重大更新：极速多线程图形化版本
 
+本次 V2.0 更新重构了底层的网络发包架构，引入了可视化的操作界面，彻底解决了跨洋直连机房的高延迟与风控拦截问题。
+
+### ✨ 核心特性 (Features)
+
+*   **🎨 全新图形化界面 (GUI)：** 彻底告别命令行黑框。通过轻量级 Tkinter 构建了直观的操作控制台，支持直填凭证与任务 ID，并提供实时的运行日志面板。
+*   **🔌 TCP Keep-Alive 长连接预热：** 弃用单次阻塞请求。底层引入持久化连接池 (Session)，并在开火前 5 秒发送轻量级请求打通专属隧道，彻底消除 DNS 解析与 TLS 握手带来的不稳定延迟。
+*   **⚡ 绝对零提前量 (Zero-Tolerance)：** 抛弃玄学测速与偷跑策略。得益于长连接极低的纯传输延迟，脚本将触发条件严格锁定在 `00.000` 秒，100% 规避整点前的 WAF `{"code": -705}` 拦截。
+*   **🔫 多线程异步齐射 (Multi-Thread Burst)：** 采用高并发线程池发射机制。在 `0.15` 秒的极限安全间隔内，将 6 发请求错落有致地独立倾泻至后端网关，最大化抢单概率的同时规避 `{"code": -509}` 恶意流量封锁。
 
 ---
 
@@ -68,6 +77,31 @@ A lightweight desktop automation tool developed in Python (`tkinter`), specifica
 3. Run the app: `python bili_gui_sniper.py`
 
 ---
+
+### How to Get Core Parameters
+
+    SESSDATA:
+    Log in to Bilibili in your PC browser, press F12 to open Developer Tools, switch to the Application (or Storage) panel, expand Cookies on the left and select [https://www.bilibili.com](https://www.bilibili.com). Find the entry named SESSDATA in the right-hand list and copy its value.
+
+    bili_jct:
+    In the same Cookie list within the browser's Developer Tools, find the entry named bili_jct and copy its corresponding token string.
+
+    Task ID:
+    Go to the Bilibili activity reward exchange page and check your browser's URL address bar. The string of characters immediately following task_id= (e.g., 18ERA2wloghvi2800) is the Task ID.
+
+
+## 🚀 V2.0 Major Update: High-Speed Multi-Threaded GUI Version
+
+The V2.0 update completely refactors the underlying network request architecture and introduces a graphical user interface (GUI). It thoroughly resolves the high-latency and risk-control interception issues caused by direct cross-ocean connections to the server.
+
+### ✨ Core Features
+
+*   **🎨 Brand New GUI:** Say goodbye to the black command-line terminal. A lightweight and intuitive control panel built with Tkinter allows you to input your credentials and Task ID directly, complete with a real-time execution log.
+*   **🔌 TCP Keep-Alive Pre-warming:** Deprecated single blocking requests. The core now utilizes a persistent connection pool (Session) and sends a lightweight request 5 seconds before triggering to pre-warm the tunnel. This entirely eliminates the unstable latency caused by DNS resolution and TLS handshakes.
+*   **⚡ Absolute Zero-Tolerance Timing:** Abandoned unpredictable latency testing and "early-start" strategies. Thanks to the ultra-low pure transmission latency of the persistent connection, the trigger time is strictly locked at `00.000` seconds, 100% bypassing the WAF `{"code": -705}` interception before the hour mark.
+*   **🔫 Multi-Threaded Asynchronous Burst:** Adopts a high-concurrency thread pool mechanism. Within a strict 0.15-second safety interval, 6 independent requests are rapidly fired at the backend gateway. This maximizes the success rate of claiming rewards while avoiding `{"code": -509}` malicious traffic bans.
+
+
 
 ## 📄 License
 本项目采用 [MIT License](LICENSE) 开源协议。

@@ -1,212 +1,160 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-import threading
 import requests
 import time
+import threading
 from datetime import datetime, timedelta
 
-class BiliSniperApp:
+class BiliSniperGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("B站原神奖励自动狙击器 - GitHub 开源版")
-        self.root.geometry("600x700")
+        self.root.title("B站原神奖励极速狙击台 V2.0 (多线程长连接版)")
+        self.root.geometry("600x550")
         self.root.resizable(False, False)
         
-        self.is_running = False  # 控制抢购循环的开关
+        self.is_running = False
         self.setup_ui()
 
     def setup_ui(self):
-        # ================= 1. 凭证设置区 =================
-        frame_auth = ttk.LabelFrame(self.root, text=" 核心凭证配置 (本地保存，绝对安全) ", padding=10)
-        frame_auth.pack(fill="x", padx=10, pady=5)
+        # ================= 1. 配置输入区 =================
+        input_frame = ttk.LabelFrame(self.root, text=" 🔑 账号与任务配置 ", padding=10)
+        input_frame.pack(fill="x", padx=15, pady=10)
 
-        ttk.Label(frame_auth, text="SESSDATA:").grid(row=0, column=0, sticky="w", pady=2)
-        self.entry_sess = ttk.Entry(frame_auth, width=60)
-        self.entry_sess.grid(row=0, column=1, sticky="w", padx=5, pady=2)
+        # SESSDATA
+        ttk.Label(input_frame, text="SESSDATA:").grid(row=0, column=0, sticky="w", pady=5)
+        self.sess_entry = ttk.Entry(input_frame, width=50, show="*")
+        self.sess_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        ttk.Label(frame_auth, text="bili_jct:").grid(row=1, column=0, sticky="w", pady=2)
-        self.entry_jct = ttk.Entry(frame_auth, width=60)
-        self.entry_jct.grid(row=1, column=1, sticky="w", padx=5, pady=2)
+        # bili_jct
+        ttk.Label(input_frame, text="bili_jct (BID):").grid(row=1, column=0, sticky="w", pady=5)
+        self.jct_entry = ttk.Entry(input_frame, width=50, show="*")
+        self.jct_entry.grid(row=1, column=1, padx=10, pady=5)
+
+        # Task ID
+        ttk.Label(input_frame, text="项目代码 (Task ID):").grid(row=2, column=0, sticky="w", pady=5)
+        self.tid_entry = ttk.Entry(input_frame, width=50)
+        self.tid_entry.insert(0, "18ERA2wloghvipp00") # 默认填入 11:00 原石任务
+        self.tid_entry.grid(row=2, column=1, padx=10, pady=5)
+
+        # ================= 2. 控制按钮区 =================
+        btn_frame = tk.Frame(self.root)
+        btn_frame.pack(fill="x", padx=15, pady=5)
         
-        ttk.Label(frame_auth, text="任务 ID:").grid(row=2, column=0, sticky="w", pady=2)
-        self.entry_task = ttk.Entry(frame_auth, width=60)
-        self.entry_task.insert(0, "18ERA2wloghvipp00") # 默认 11:00 任务
-        self.entry_task.grid(row=2, column=1, sticky="w", padx=5, pady=2)
+        self.start_btn = tk.Button(btn_frame, text="🚀 启动自动狙击", bg="#ff6699", fg="white", font=("微软雅黑", 12, "bold"), command=self.start_sniper)
+        self.start_btn.pack(side="left", fill="x", expand=True, ipady=5)
 
-        # ================= 2. 战术设置区 =================
-        frame_tactic = ttk.LabelFrame(self.root, text=" 狙击战术参数 ", padding=10)
-        frame_tactic.pack(fill="x", padx=10, pady=5)
-
-        ttk.Label(frame_tactic, text="提前开火量 (秒):").grid(row=0, column=0, sticky="w")
-        self.entry_advance = ttk.Entry(frame_tactic, width=10)
-        self.entry_advance.insert(0, "0.900")
-        self.entry_advance.grid(row=0, column=1, sticky="w", padx=5)
-
-        ttk.Label(frame_tactic, text="连发次数:").grid(row=0, column=2, sticky="w", padx=10)
-        self.entry_shots = ttk.Entry(frame_tactic, width=10)
-        self.entry_shots.insert(0, "6")
-        self.entry_shots.grid(row=0, column=3, sticky="w", padx=5)
-
-        ttk.Label(frame_tactic, text="连发间隔 (秒):").grid(row=0, column=4, sticky="w", padx=10)
-        self.entry_interval = ttk.Entry(frame_tactic, width=10)
-        self.entry_interval.insert(0, "0.4")
-        self.entry_interval.grid(row=0, column=5, sticky="w", padx=5)
-
-        # ================= 3. 操作按钮区 =================
-        frame_btns = tk.Frame(self.root)
-        frame_btns.pack(fill="x", padx=10, pady=10)
-
-        self.btn_test = ttk.Button(frame_btns, text="📡 测算服务器延迟", command=self.start_latency_test)
-        self.btn_test.pack(side="left", padx=5)
-
-        self.btn_start = ttk.Button(frame_btns, text="🚀 启动狙击系统", command=self.toggle_sniper)
-        self.btn_start.pack(side="right", padx=5)
-
-        # ================= 4. 日志输出区 =================
-        frame_log = ttk.LabelFrame(self.root, text=" 战报终端 ", padding=10)
-        frame_log.pack(fill="both", expand=True, padx=10, pady=5)
-
-        self.log_area = scrolledtext.ScrolledText(frame_log, wrap=tk.WORD, state='disabled', bg="black", fg="green", font=("Consolas", 10))
+        # ================= 3. 运行日志区 =================
+        log_frame = ttk.LabelFrame(self.root, text=" 📜 运行日志 ", padding=10)
+        log_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        
+        self.log_area = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=("Consolas", 9), bg="#1e1e1e", fg="#d4d4d4")
         self.log_area.pack(fill="both", expand=True)
+        self.log_area.config(state='disabled')
 
-        self.log("系统初始化完成。本项目仅供开源技术交流。")
-        self.log("请填入凭证后，点击测算延迟，或直接启动。")
+        self.log("✅ 界面初始化完成，等待填入配置...")
 
-    # ================= 核心功能函数 =================
     def log(self, message):
-        """线程安全的日志输出"""
-        def append():
-            self.log_area.config(state='normal')
-            self.log_area.insert(tk.END, f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
-            self.log_area.see(tk.END)
-            self.log_area.config(state='disabled')
-        self.root.after(0, append)
+        """安全的日志打印函数，将文本输出到界面上"""
+        self.log_area.config(state='normal')
+        self.log_area.insert(tk.END, message + "\n")
+        self.log_area.see(tk.END) # 自动滚动到底部
+        self.log_area.config(state='disabled')
 
-    def get_api_params(self):
-        """读取并验证界面上的参数"""
-        sess = self.entry_sess.get().strip()
-        jct = self.entry_jct.get().strip()
-        task = self.entry_task.get().strip()
-        
-        if not sess or not jct or not task:
-            messagebox.showwarning("警告", "请完整填写 SESSDATA, bili_jct 和任务 ID！")
-            return None
-        return sess, jct, task
-
-    # ---------------- 延迟测试模块 ----------------
-    def start_latency_test(self):
-        params = self.get_api_params()
-        if not params: return
-        self.btn_test.config(state="disabled")
-        threading.Thread(target=self._run_latency_test, daemon=True).start()
-
-    def _run_latency_test(self):
-        self.log("开始向 B站接口发送探测包...")
-        test_url = "https://api.bilibili.com/x/activity_components/mission/receive"
-        latencies = []
-        for i in range(3):
-            start = time.time()
-            try:
-                requests.get(test_url, timeout=3)
-            except:
-                pass
-            latency = (time.time() - start) * 1000
-            latencies.append(latency)
-            self.log(f"探测包 {i+1}: 耗时 {latency:.0f} 毫秒")
-            time.sleep(0.5)
+    def start_sniper(self):
+        if self.is_running:
+            return
             
-        avg = sum(latencies) / len(latencies) / 1000
-        self.log(f"✅ 平均延迟: {avg:.3f} 秒")
+        sess = self.sess_entry.get().strip()
+        jct = self.jct_entry.get().strip()
+        tid = self.tid_entry.get().strip()
         
-        # 自动帮用户计算最佳提前量 = 延迟 + 0.3秒缓冲
-        suggest_time = avg + 0.3
-        self.log(f"💡 已自动为您计算最佳提前量: {suggest_time:.3f} 秒，并填入上方表单。")
-        
-        # 将计算结果写回 UI 界面
-        self.root.after(0, lambda: [self.entry_advance.delete(0, tk.END), self.entry_advance.insert(0, f"{suggest_time:.3f}")])
-        self.root.after(0, lambda: self.btn_test.config(state="normal"))
-
-    # ---------------- 定时狙击模块 ----------------
-    def toggle_sniper(self):
-        if not self.is_running:
-            params = self.get_api_params()
-            if not params: return
-            self.is_running = True
-            self.btn_start.config(text="🛑 紧急停止狙击")
-            self.entry_sess.config(state="disabled")
-            self.entry_jct.config(state="disabled")
-            
-            # 开启新线程运行 while 循环，防止 GUI 卡死
-            threading.Thread(target=self._run_sniper_loop, args=(params,), daemon=True).start()
-        else:
-            self.is_running = False
-            self.btn_start.config(text="🚀 启动狙击系统")
-            self.entry_sess.config(state="normal")
-            self.entry_jct.config(state="normal")
-            self.log("已手动停止任务。")
-
-    def _run_sniper_loop(self, params):
-        sess, jct, task = params
-        activity_id = "1ERAzwloghvcpc00"
-        api_url = f"https://api.bilibili.com/x/activity_components/mission/receive?csrf={jct}"
-        
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": f"https://www.bilibili.com/blackboard/era/award-exchange.html?task_id={task}",
-            "Cookie": f"SESSDATA={sess}; bili_jct={jct};",
-        }
-        payload = {"csrf": jct, "task_id": task, "activity_id": activity_id, "receive_from": "missionPage"}
-        
-        try:
-            adv_time = float(self.entry_advance.get())
-            shots = int(self.entry_shots.get())
-            interval = float(self.entry_interval.get())
-        except ValueError:
-            self.log("❌ 战术参数格式错误，必须是数字！已退出。")
-            self.root.after(0, self.toggle_sniper)
+        if not sess or not jct or not tid:
+            messagebox.showwarning("警告", "请填满所有配置信息！")
             return
 
-        # 智能判定：如果当前是 10点多，默认瞄准 11:00 (这里简化为取下一个整点或半点，你可以根据需要调整)
-        now = datetime.now()
-        target = now.replace(hour=11, minute=0, second=0, microsecond=0)
-        if now >= target: target += timedelta(days=1)
+        self.is_running = True
+        self.start_btn.config(state="disabled", text="⏳ 狙击潜伏中...", bg="#cccccc")
+        self.log("\n" + "="*40)
+        self.log("🚀 初始化狙击线程...")
         
-        self.log(f"🎯 目标锁定！预计开火时间: {target}")
-        self.log(f"战术确认: 提前 {adv_time} 秒, 连发 {shots} 次, 间隔 {interval} 秒")
+        # 启动后台线程执行核心逻辑，防止 GUI 卡死
+        threading.Thread(target=self.sniper_logic, args=(sess, jct, tid), daemon=True).start()
 
-        while self.is_running:
-            now = datetime.now()
-            diff = (target - now).total_seconds()
+    def sniper_logic(self, sess, jct, tid):
+        # 组装请求参数
+        activity_id = "1ERAzwloghvcpc00"
+        api_url = f"https://api.bilibili.com/x/activity_components/mission/receive?csrf={jct}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": f"https://www.bilibili.com/blackboard/era/award-exchange.html?task_id={tid}",
+            "Cookie": f"SESSDATA={sess}; bili_jct={jct};",
+            "Origin": "https://www.bilibili.com"
+        }
+        payload = {"csrf": jct, "task_id": tid, "activity_id": activity_id, "receive_from": "missionPage"}
+
+        # 建立长连接
+        session = requests.Session()
+        session.headers.update(headers)
+
+        # 计算目标时间 (11:00)
+        now = datetime.now()
+        target_time = now.replace(hour=11, minute=0, second=0, microsecond=0)
+        if now >= target_time:
+            target_time += timedelta(days=1)
             
-            if diff <= adv_time:
-                self._fire(api_url, headers, payload, shots, interval)
-                self.root.after(0, self.toggle_sniper) # 射击完毕后，自动恢复按钮状态
-                break
-                
-            if diff > 60:
-                time.sleep(1) # GUI 模式下每次最多睡1秒，以便及时响应“停止”按钮
-                if int(diff) % 60 == 0:
-                    self.log(f"💤 潜伏中，距离开火还有 {int(diff/60)} 分钟...")
-            elif diff > 5:
-                time.sleep(0.5)
-                if int(diff*10) % 10 == 0:
-                    self.log(f"⏱️ 倒计时: {int(diff)} 秒")
-            else:
-                time.sleep(0.01)
+        self.log(f"🎯 锁定目标时间: {target_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        connection_warmed_up = False
 
-    def _fire(self, url, headers, payload, shots, interval):
-        self.log("💥 目标进入射程，开始极限连发！！！")
-        for i in range(shots):
-            if not self.is_running: break # 允许中途强制停止
+        def fire_single_shot(shot_idx):
             try:
-                self.log(f"  -> 第 {i+1} 发破甲弹射出...")
-                resp = requests.post(url, headers=headers, data=payload, timeout=5)
-                self.log(f"  [响应码:{resp.status_code}] 返回: {resp.json()}")
-                time.sleep(interval)
+                resp = session.post(api_url, data=payload, timeout=3)
+                self.log(f"  [{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] (子弹 {shot_idx}) 响应: {resp.json()}")
             except Exception as e:
-                self.log(f"  网络异常: {e}")
+                self.log(f"  (子弹 {shot_idx}) 异常: {e}")
+
+        # 主控循环
+        while True:
+            current_time = datetime.now()
+            time_diff = (target_time - current_time).total_seconds()
+
+            # 提前 5 秒预热
+            if 4.5 <= time_diff <= 5.5 and not connection_warmed_up:
+                self.log(f"[{current_time.strftime('%H:%M:%S')}] 🔌 正在预热 TCP 长连接...")
+                try:
+                    session.get("https://api.bilibili.com/x/serverdate", timeout=3)
+                    self.log("✅ 管道预热完成，子弹上膛！")
+                except:
+                    pass
+                connection_warmed_up = True
+
+            # 到达 00.000 秒，开火！
+            if time_diff <= 0.000:
+                self.log(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🚀 跨过阀门，多线程全开！")
+                for i in range(6):
+                    self.log(f"  -> 第 {i+1} 发子弹飞出...")
+                    threading.Thread(target=fire_single_shot, args=(i+1,), daemon=True).start()
+                    time.sleep(0.15)
+                
+                time.sleep(3) # 给线程留出打日志的时间
+                self.log("🏁 本次狙击任务结束。")
+                break
+
+            # 智能休眠反馈
+            if time_diff > 60:
+                if int(time_diff) % 10 == 0:
+                    self.log(f"[{current_time.strftime('%H:%M:%S')}] 💤 距开火约 {int(time_diff/60)} 分钟...")
+                time.sleep(1)
+            elif time_diff > 5:
+                self.log(f"[{current_time.strftime('%H:%M:%S')}] ⏱️ 倒计时: {int(time_diff)} 秒")
+                time.sleep(1)
+            else:
+                time.sleep(0.001)
+
+        # 恢复按钮状态
+        self.start_btn.config(state="normal", text="🚀 启动自动狙击", bg="#ff6699")
+        self.is_running = False
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = BiliSniperApp(root)
+    app = BiliSniperGUI(root)
     root.mainloop()
